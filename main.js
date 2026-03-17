@@ -3,13 +3,14 @@
 // IMPORTANT: Replace with your web app's Firebase configuration
 // You can get this from your Firebase project console.
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
+    apiKey: "AIzaSyBV9cJh4Cvni2xN4X1Wd_XhzbXesg0whX0",
+    authDomain: "runtheworld-55c68.firebaseapp.com",
+    projectId: "runtheworld-55c68",
+    storageBucket: "runtheworld-55c68.firebasestorage.app",
+    messagingSenderId: "175654937851",
+    appId: "1:175654937851:web:1c09a7621042d023eb7c5e",
+    measurementId: "G-MGZFK2B24D"
+  };
 
 // Check if placeholders are still present
 if (firebaseConfig.apiKey === "YOUR_API_KEY") {
