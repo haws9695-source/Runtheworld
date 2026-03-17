@@ -153,6 +153,8 @@ class RunTheWorldApp {
             return;
         }
 
+        // Reset runs history for the new journey
+        this.runs = [];
         this.startLocation = start;
         this.destinationLocation = dest;
         this.totalDistance = dist;
@@ -161,11 +163,14 @@ class RunTheWorldApp {
             await this.dbRef.update({
                 startLocation: start,
                 destinationLocation: dest,
-                totalDistance: dist
+                totalDistance: dist,
+                runs: [] // Clear history in Firestore
             });
             this.showDashboard();
+            this.updateDisplay(); // Refresh UI to show empty list
         } catch (error) {
             console.error("Error saving route:", error);
+            alert("Failed to save route. Check Firestore rules.");
         }
     }
 
