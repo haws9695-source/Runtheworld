@@ -8,6 +8,7 @@
 - **Cloud Data Storage:** Running history for each user is stored in a dedicated document within Firestore, ensuring data is persistent and accessible across devices.
 - **Personalized UI:** The application UI updates to show the logged-in user's profile information (name and photo) and hides/shows content based on auth state.
 - **Dynamic Progress Tracking:** The core features of tracking running distance, calculating progress, and estimating remaining runs are all functional and tied to the user's cloud data.
+- **Run Record Management:** Users can log their daily runs and delete incorrect or accidental entries from their run history. Deleting a run automatically updates the progress bar, map position, and remaining distance.
 - **Modern and Responsive Design:** The application features a clean, card-based layout with a responsive design.
 
 ## Current Plan & Steps

@@ -314,6 +314,30 @@ button:active {
     color: var(--text-color);
 }
 
+.delete-run-btn {
+    background-color: #ff5252;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: auto;
+    margin-left: 10px;
+    font-weight: normal;
+    box-shadow: 0 2px 4px rgba(255, 82, 82, 0.2);
+}
+
+.delete-run-btn:hover {
+    background-color: #e53935;
+    transform: translateY(-1px);
+}
+
+.delete-run-btn:active {
+    transform: translateY(0);
+}
+
 footer {
     background-color: var(--text-color);
     color: white;

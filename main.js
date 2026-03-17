@@ -310,6 +310,14 @@ class RunTheWorldApp {
         this.initMap(); // Redraw map with progress
     }
 
+    async deleteRun(timestampMillis) {
+        if (!confirm('Are you sure you want to delete this record?')) return;
+        this.runs = this.runs.filter(r => r.timestamp.toMillis() !== timestampMillis);
+        await this.dbRef.update({ runs: this.runs });
+        this.updateDisplay();
+        this.initMap();
+    }
+
     updateDisplay() {
         this.runs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
         const covered = this.runs.reduce((s, r) => s + r.distance, 0);
@@ -324,7 +332,16 @@ class RunTheWorldApp {
         this.runList.innerHTML = '';
         this.runs.forEach(r => {
             const li = document.createElement('li');
-            li.innerHTML = `<span>${r.date}</span><span>${r.distance.toFixed(1)} km</span>`;
+            const timestampMillis = r.timestamp?.toMillis() || 0;
+            li.innerHTML = `
+                <span>${r.date}</span>
+                <div style="display: flex; align-items: center;">
+                    <span>${r.distance.toFixed(1)} km</span>
+                    <button class="delete-run-btn" data-id="${timestampMillis}">Delete</button>
+                </div>
+            `;
+            const delBtn = li.querySelector('.delete-run-btn');
+            delBtn.onclick = () => this.deleteRun(parseInt(delBtn.getAttribute('data-id')));
             this.runList.appendChild(li);
         });
     }
