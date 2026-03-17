@@ -30,15 +30,30 @@ try {
 
 class RunTheWorldApp {
     constructor() {
-        this.totalDistance = 500;
+        this.totalDistance = 0;
+        this.startLocation = "";
+        this.destinationLocation = "";
         this.runs = [];
         this.userId = null;
         this.dbRef = null;
 
-        // UI Elements
+        // UI Elements - Setup
+        this.setupSection = document.getElementById('setup-section');
+        this.dashboardSection = document.getElementById('dashboard-section');
+        this.startLocationInput = document.getElementById('start-location');
+        this.destinationLocationInput = document.getElementById('destination-location');
+        this.routeDistanceInput = document.getElementById('route-distance');
+        this.saveRouteBtn = document.getElementById('save-route-btn');
+
+        // UI Elements - Dashboard
+        this.displayStart = document.getElementById('display-start');
+        this.displayDestination = document.getElementById('display-destination');
+        this.totalDistanceSpan = document.getElementById('total-distance');
+        this.editRouteBtn = document.getElementById('edit-route-btn');
+        
         this.runDistanceInput = document.getElementById('run-distance');
         this.addRunBtn = document.getElementById('add-run-btn');
-        this.totalDistanceSpan = document.getElementById('total-distance');
+        
         this.completedPercentageSpan = document.getElementById('completed-percentage');
         this.distanceCoveredSpan = document.getElementById('distance-covered');
         this.remainingDistanceSpan = document.getElementById('remaining-distance');
@@ -50,34 +65,99 @@ class RunTheWorldApp {
     }
 
     addEventListeners() {
+        // Setup listeners
+        if (this.saveRouteBtn) {
+            this.saveRouteBtn.addEventListener('click', () => this.saveRoute());
+        }
+        if (this.editRouteBtn) {
+            this.editRouteBtn.addEventListener('click', () => this.showSetup());
+        }
+
+        // Run log listeners
         if (this.addRunBtn) {
             this.addRunBtn.addEventListener('click', () => this.addRun());
         }
         if (this.runDistanceInput) {
             this.runDistanceInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.addRun();
-                }
+                if (e.key === 'Enter') this.addRun();
             });
         }
     }
 
-    async loadRuns() {
+    async loadUserData() {
         if (!this.userId || !db) return;
         try {
             this.dbRef = db.collection('users').doc(this.userId);
             const doc = await this.dbRef.get();
+            
             if (doc.exists) {
-                this.runs = doc.data().runs || [];
+                const data = doc.data();
+                this.runs = data.runs || [];
+                
+                if (data.startLocation && data.destinationLocation && data.totalDistance) {
+                    this.startLocation = data.startLocation;
+                    this.destinationLocation = data.destinationLocation;
+                    this.totalDistance = data.totalDistance;
+                    this.showDashboard();
+                } else {
+                    this.showSetup();
+                }
             } else {
-                // Create a new document for the user
+                // New user
                 await this.dbRef.set({ runs: [] });
-                this.runs = [];
+                this.showSetup();
             }
-            this.updateDisplay();
         } catch (error) {
-            console.error("Error loading runs:", error);
+            console.error("Error loading user data:", error);
         }
+    }
+
+    async saveRoute() {
+        const start = this.startLocationInput.value.trim();
+        const dest = this.destinationLocationInput.value.trim();
+        const dist = parseFloat(this.routeDistanceInput.value);
+
+        if (!start || !dest || isNaN(dist) || dist <= 0) {
+            alert('Please fill in all fields with valid information.');
+            return;
+        }
+
+        this.startLocation = start;
+        this.destinationLocation = dest;
+        this.totalDistance = dist;
+
+        try {
+            await this.dbRef.update({
+                startLocation: start,
+                destinationLocation: dest,
+                totalDistance: dist
+            });
+            this.showDashboard();
+        } catch (error) {
+            console.error("Error saving route:", error);
+            alert("Failed to save route. Check Firestore rules.");
+        }
+    }
+
+    showSetup() {
+        this.setupSection.style.display = 'block';
+        this.dashboardSection.style.display = 'none';
+        
+        // Pre-fill if editing
+        this.startLocationInput.value = this.startLocation;
+        this.destinationLocationInput.value = this.destinationLocation;
+        this.routeDistanceInput.value = this.totalDistance || "";
+    }
+
+    showDashboard() {
+        this.setupSection.style.display = 'none';
+        this.dashboardSection.style.display = 'block';
+        
+        this.displayStart.textContent = this.startLocation;
+        this.displayDestination.textContent = this.destinationLocation;
+        this.totalDistanceSpan.textContent = this.totalDistance;
+        
+        this.updateDisplay();
     }
 
     async addRun() {
@@ -105,7 +185,6 @@ class RunTheWorldApp {
             this.updateDisplay();
         } catch (error) {
             console.error("Error adding run:", error);
-            alert("Failed to save run. Make sure your Firestore rules allow writes.");
         }
     }
 
@@ -121,7 +200,6 @@ class RunTheWorldApp {
         const remainingDistance = this.totalDistance - totalCoveredDistance;
         const completedPercentage = (totalCoveredDistance / this.totalDistance) * 100;
 
-        if (this.totalDistanceSpan) this.totalDistanceSpan.textContent = this.totalDistance;
         if (this.completedPercentageSpan) this.completedPercentageSpan.textContent = completedPercentage.toFixed(2);
         if (this.distanceCoveredSpan) this.distanceCoveredSpan.textContent = totalCoveredDistance.toFixed(2);
         if (this.remainingDistanceSpan) this.remainingDistanceSpan.textContent = Math.max(0, remainingDistance).toFixed(2);
@@ -158,7 +236,9 @@ class RunTheWorldApp {
         this.runs = [];
         this.userId = null;
         this.dbRef = null;
-        this.updateDisplay();
+        this.totalDistance = 0;
+        this.startLocation = "";
+        this.destinationLocation = "";
     }
 }
 
@@ -182,16 +262,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle the redirect result
     auth.getRedirectResult().then((result) => {
-        if (result.user) {
+        if (result && result.user) {
             console.log("Redirect login successful:", result.user.displayName);
         }
     }).catch(error => {
         console.error("Error during redirect sign-in:", error);
-        if (error.code === 'auth/operation-not-allowed') {
-            alert("Google Sign-In is not enabled in your Firebase Console. Please enable it under Authentication > Sign-in method.");
-        } else {
-            alert("Login error: " + error.message);
-        }
     });
 
     // Listen for auth state changes
@@ -204,7 +279,7 @@ document.addEventListener('DOMContentLoaded', () => {
             userNameEl.textContent = user.displayName;
             userPhotoEl.src = user.photoURL;
             appInstance.userId = user.uid;
-            appInstance.loadRuns();
+            appInstance.loadUserData(); // Load route and runs
         } else {
             console.log("User state: Signed Out");
             authContainer.style.display = 'flex';
@@ -216,14 +291,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Sign in with Redirect
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            console.log("Login button clicked, starting redirect...");
-            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-                alert("Please set your Firebase API Key in main.js first!");
-                return;
-            }
             auth.signInWithRedirect(provider).catch(err => {
                 console.error("Sign in error:", err);
-                alert("Sign in failed: " + err.message);
             });
         });
     }

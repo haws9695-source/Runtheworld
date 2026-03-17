@@ -287,3 +287,46 @@ footer {
     font-size: 0.9em;
     border-top: 3px solid var(--accent-color);
 }
+
+/* Additional styles for Route Setup and Dashboard */
+.secondary-btn {
+    background-color: #6c757d !important;
+    margin-top: 10px;
+    font-size: 0.9em;
+    padding: 8px 15px;
+    width: auto;
+}
+
+.secondary-btn:hover {
+    background-color: #5a6268 !important;
+}
+
+.current-route p {
+    font-size: 1.1rem;
+    margin: 10px 0;
+}
+
+.current-route strong {
+    color: var(--secondary-color);
+}
+
+#setup-section p {
+    margin-bottom: 20px;
+    color: var(--text-light);
+}
+
+#dashboard-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 25px;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    #dashboard-section {
+        grid-template-columns: 1fr 1fr;
+    }
+    .current-route {
+        grid-column: 1 / -1;
+    }
+}
