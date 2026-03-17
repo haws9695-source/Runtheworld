@@ -1,14 +1,82 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run the World</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+    <div id="auth-container">
+        <h1>Welcome to Run the World</h1>
+        <p>Log in to track your global running adventures.</p>
+        <button id="login-btn">Login with Google</button>
+    </div>
+
+    <div class="container" id="app-container" style="display: none;">
+        <header>
+            <div id="user-profile">
+                <img id="user-photo" src="" alt="User Photo">
+                <span id="user-name"></span>
+                <button id="logout-btn">Logout</button>
+            </div>
+            <h1>Run the World</h1>
+            <p>Track your progress towards a global running goal!</p>
+        </header>
+
+        <main>
+            <section class="route-setup card">
+                <h2>Your Route</h2>
+                <div class="input-group">
+                    <label for="start-location">Start Location:</label>
+                    <input type="text" id="start-location" value="Tokyo Station" disabled>
+                </div>
+                <div class="input-group">
+                    <label for="destination-location">Destination:</label>
+                    <input type="text" id="destination-location" value="Osaka Station" disabled>
+                </div>
+                <p>Total Distance: <span id="total-distance">500</span> km (hardcoded)</p>
+            </section>
+
+            <section class="run-log card">
+                <h2>Log Your Run</h2>
+                <div class="input-group">
+                    <label for="run-distance">Distance Run Today (km):</label>
+                    <input type="number" id="run-distance" min="0" step="0.1">
+                </div>
+                <button id="add-run-btn">Add Run</button>
+            </section>
+
+            <section class="progress-display card">
+                <h2>Your Progress</h2>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar" style="width: 0%;"></div>
+                </div>
+                <p>Completed: <span id="completed-percentage">0.00</span>%</p>
+                <p>Total Distance Covered: <span id="distance-covered">0.00</span> km</p>
+                <p>Remaining Distance: <span id="remaining-distance">500.00</span> km</p>
+                <p>Estimated Runs Left: <span id="runs-left">?</span> (at current average pace)</p>
+                
+                <div class="run-history">
+                    <h3>Run History</h3>
+                    <ul id="run-list">
+                        <!-- Run entries will be added here by JS -->
+                    </ul>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Run the World</p>
+        </footer>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <!-- Your web app's Firebase configuration -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>

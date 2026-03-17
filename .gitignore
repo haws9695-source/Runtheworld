@@ -1,0 +1,10 @@
+# IDE and environment specific files
+.vscode/
+.idx/
+
+# Log files
+firebase-debug.log
+*.log
+
+# Output files
+output.txt
