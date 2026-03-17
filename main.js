@@ -271,20 +271,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for auth state changes
     auth.onAuthStateChanged(user => {
-        if (user) {
-            console.log("User state: Signed In", user.displayName);
-            authContainer.style.display = 'none';
-            appContainer.style.display = 'block';
+        try {
+            if (user) {
+                console.log("User state: Signed In", user.displayName);
+                authContainer.style.display = 'none';
+                appContainer.style.display = 'block';
 
-            userNameEl.textContent = user.displayName;
-            userPhotoEl.src = user.photoURL;
-            appInstance.userId = user.uid;
-            appInstance.loadUserData(); // Load route and runs
-        } else {
-            console.log("User state: Signed Out");
-            authContainer.style.display = 'flex';
-            appContainer.style.display = 'none';
-            appInstance.reset();
+                userNameEl.textContent = user.displayName || "User";
+                userPhotoEl.src = user.photoURL || "";
+                appInstance.userId = user.uid;
+                appInstance.loadUserData(); // Load route and runs
+            } else {
+                console.log("User state: Signed Out");
+                authContainer.style.display = 'flex';
+                appContainer.style.display = 'none';
+                appInstance.reset();
+            }
+        } catch (err) {
+            console.error("Auth state change error:", err);
+            alert("Auth UI Error: " + err.message);
         }
     });
 
