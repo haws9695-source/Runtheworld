@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Run the World</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body>
     <div id="auth-page">
@@ -75,6 +77,12 @@
 
             <!-- 2. Dashboard Section (Shown after route is set) -->
             <div id="dashboard-section" style="display: none;">
+                <!-- New Map Section -->
+                <section class="map-display card">
+                    <h2>Journey Map</h2>
+                    <div id="map" style="height: 300px; border-radius: 8px;"></div>
+                </section>
+
                 <section class="current-route card">
                     <h2>Current Route</h2>
                     <p><strong id="display-start"></strong> to <strong id="display-destination"></strong></p>
@@ -118,6 +126,9 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <!-- Leaflet JS for Map -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <!-- Your web app's Firebase configuration -->
     <script type="module" src="main.js"></script>

@@ -74,20 +74,22 @@ class RunTheWorldApp {
         this.totalDistance = 0;
         this.startLocation = "";
         this.destinationLocation = "";
+        this.startCoord = null;
+        this.destCoord = null;
         this.runs = [];
         this.userId = null;
         this.dbRef = null;
+        this.map = null;
+        this.mapMarkers = [];
+        this.mapPolyline = null;
 
-        // UI Selectors - Start
+        // UI Selectors
         this.startCountry = document.getElementById('start-country');
         this.startCity = document.getElementById('start-city');
         this.startLandmark = document.getElementById('start-landmark');
-
-        // UI Selectors - Destination
         this.destCountry = document.getElementById('dest-country');
         this.destCity = document.getElementById('dest-city');
         this.destLandmark = document.getElementById('dest-landmark');
-
         this.routeDistanceInput = document.getElementById('route-distance');
         this.saveRouteBtn = document.getElementById('save-route-btn');
 
@@ -122,12 +124,10 @@ class RunTheWorldApp {
     }
 
     addEventListeners() {
-        // Start Location Hierarchy
         this.startCountry.addEventListener('change', () => this.handleCountryChange(this.startCountry, this.startCity, this.startLandmark));
         this.startCity.addEventListener('change', () => this.handleCityChange(this.startCountry, this.startCity, this.startLandmark));
         this.startLandmark.addEventListener('change', () => this.calculateDistance());
 
-        // Destination Hierarchy
         this.destCountry.addEventListener('change', () => this.handleCountryChange(this.destCountry, this.destCity, this.destLandmark));
         this.destCity.addEventListener('change', () => this.handleCityChange(this.destCountry, this.destCity, this.destLandmark));
         this.destLandmark.addEventListener('change', () => this.calculateDistance());
@@ -143,19 +143,15 @@ class RunTheWorldApp {
         citySelect.innerHTML = '<option value="">Select City</option>';
         landmarkSelect.innerHTML = '<option value="">Select Landmark</option>';
         landmarkSelect.disabled = true;
-
         if (country) {
             citySelect.disabled = false;
-            const cities = Object.keys(locationData[country]);
-            cities.forEach(city => {
+            Object.keys(locationData[country]).forEach(city => {
                 const opt = document.createElement('option');
                 opt.value = city;
                 opt.textContent = city;
                 citySelect.appendChild(opt);
             });
-        } else {
-            citySelect.disabled = true;
-        }
+        } else { citySelect.disabled = true; }
         this.calculateDistance();
     }
 
@@ -163,68 +159,76 @@ class RunTheWorldApp {
         const country = countrySelect.value;
         const city = citySelect.value;
         landmarkSelect.innerHTML = '<option value="">Select Landmark</option>';
-
         if (city) {
             landmarkSelect.disabled = false;
-            const landmarks = Object.keys(locationData[country][city]);
-            landmarks.forEach(landmark => {
+            Object.keys(locationData[country][city]).forEach(landmark => {
                 const opt = document.createElement('option');
                 opt.value = landmark;
                 opt.textContent = landmark;
                 landmarkSelect.appendChild(opt);
             });
-        } else {
-            landmarkSelect.disabled = true;
-        }
+        } else { landmarkSelect.disabled = true; }
         this.calculateDistance();
     }
 
     calculateDistance() {
-        const sCountry = this.startCountry.value;
-        const sCity = this.startCity.value;
-        const sLandmark = this.startLandmark.value;
+        const sC = this.startCountry.value, sCi = this.startCity.value, sL = this.startLandmark.value;
+        const dC = this.destCountry.value, dCi = this.destCity.value, dL = this.destLandmark.value;
 
-        const dCountry = this.destCountry.value;
-        const dCity = this.destCity.value;
-        const dLandmark = this.destLandmark.value;
-
-        if (sCountry && sCity && sLandmark && dCountry && dCity && dLandmark) {
-            const startCoord = locationData[sCountry][sCity][sLandmark];
-            const destCoord = locationData[dCountry][dCity][dLandmark];
-            
-            const distance = this.haversineDistance(startCoord, destCoord);
-            this.routeDistanceInput.value = distance.toFixed(1);
-        } else {
-            this.routeDistanceInput.value = "";
-        }
+        if (sC && sCi && sL && dC && dCi && dL) {
+            this.startCoord = locationData[sC][sCi][sL];
+            this.destCoord = locationData[dC][dCi][dL];
+            const dist = this.haversineDistance(this.startCoord, this.destCoord);
+            this.routeDistanceInput.value = dist.toFixed(1);
+        } else { this.routeDistanceInput.value = ""; }
     }
 
-    haversineDistance(coords1, coords2) {
-        const toRad = (x) => x * Math.PI / 180;
-        const R = 6371; // Earth's radius in km
+    haversineDistance(c1, c2) {
+        const toRad = x => x * Math.PI / 180;
+        const R = 6371;
+        const dLat = toRad(c2.lat - c1.lat), dLon = toRad(c2.lng - c1.lng);
+        const a = Math.sin(dLat/2)**2 + Math.cos(toRad(c1.lat)) * Math.cos(toRad(c2.lat)) * Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
 
-        const dLat = toRad(coords2.lat - coords1.lat);
-        const dLon = toRad(coords2.lng - coords1.lng);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(toRad(coords1.lat)) * Math.cos(toRad(coords2.lat)) *
-                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+    initMap() {
+        if (!this.map) {
+            this.map = L.map('map').setView([20, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(this.map);
+        }
+        
+        // Clear previous
+        this.mapMarkers.forEach(m => this.map.removeLayer(m));
+        if (this.mapPolyline) this.map.removeLayer(this.mapPolyline);
+        this.mapMarkers = [];
+
+        if (this.startCoord && this.destCoord) {
+            const m1 = L.marker([this.startCoord.lat, this.startCoord.lng]).addTo(this.map).bindPopup("Start: " + this.startLocation);
+            const m2 = L.marker([this.destCoord.lat, this.destCoord.lng]).addTo(this.map).bindPopup("Destination: " + this.destinationLocation);
+            this.mapMarkers = [m1, m2];
+            
+            this.mapPolyline = L.polyline([
+                [this.startCoord.lat, this.startCoord.lng],
+                [this.destCoord.lat, this.destCoord.lng]
+            ], { color: 'red', weight: 3, dashArray: '5, 10' }).addTo(this.map);
+
+            const group = new L.featureGroup(this.mapMarkers);
+            this.map.fitBounds(group.getBounds().pad(0.2));
+        }
+        
+        // Force refresh layout
+        setTimeout(() => this.map.invalidateSize(), 200);
     }
 
     async saveRoute() {
-        const start = this.startLandmark.value;
-        const dest = this.destLandmark.value;
         const dist = parseFloat(this.routeDistanceInput.value);
-
-        if (!start || !dest || isNaN(dist) || dist <= 0) {
-            alert('Please select valid start and destination landmarks.');
-            return;
-        }
+        if (isNaN(dist) || dist <= 0) { alert('Invalid selection'); return; }
 
         this.runs = [];
-        this.startLocation = `${start} (${this.startCity.value})`;
-        this.destinationLocation = `${dest} (${this.destCity.value})`;
+        this.startLocation = `${this.startLandmark.value} (${this.startCity.value})`;
+        this.destinationLocation = `${this.destLandmark.value} (${this.destCity.value})`;
         this.totalDistance = dist;
 
         try {
@@ -232,13 +236,12 @@ class RunTheWorldApp {
                 startLocation: this.startLocation,
                 destinationLocation: this.destinationLocation,
                 totalDistance: dist,
+                startCoord: this.startCoord,
+                destCoord: this.destCoord,
                 runs: []
             });
             this.showDashboard();
-            this.updateDisplay();
-        } catch (error) {
-            console.error("Error saving route:", error);
-        }
+        } catch (e) { console.error(e); }
     }
 
     async loadUserData() {
@@ -247,21 +250,18 @@ class RunTheWorldApp {
             this.dbRef = db.collection('users').doc(this.userId);
             const doc = await this.dbRef.get();
             if (doc.exists) {
-                const data = doc.data();
-                this.runs = data.runs || [];
-                if (data.startLocation && data.destinationLocation && data.totalDistance) {
-                    this.startLocation = data.startLocation;
-                    this.destinationLocation = data.destinationLocation;
-                    this.totalDistance = data.totalDistance;
+                const d = doc.data();
+                this.runs = d.runs || [];
+                if (d.startLocation && d.destinationLocation) {
+                    this.startLocation = d.startLocation;
+                    this.destinationLocation = d.destinationLocation;
+                    this.totalDistance = d.totalDistance;
+                    this.startCoord = d.startCoord;
+                    this.destCoord = d.destCoord;
                     this.showDashboard();
-                } else {
-                    this.showSetup();
-                }
-            } else {
-                await this.dbRef.set({ runs: [] });
-                this.showSetup();
-            }
-        } catch (error) { console.error(error); }
+                } else { this.showSetup(); }
+            } else { await this.dbRef.set({ runs: [] }); this.showSetup(); }
+        } catch (e) { console.error(e); }
     }
 
     showSetup() {
@@ -276,88 +276,61 @@ class RunTheWorldApp {
         this.displayDestination.textContent = this.destinationLocation;
         this.totalDistanceSpan.textContent = this.totalDistance;
         this.updateDisplay();
+        this.initMap(); // Draw map
     }
 
     async addRun() {
-        const distance = parseFloat(this.runDistanceInput.value);
-        if (isNaN(distance) || distance <= 0) { alert('Invalid distance'); return; }
-
-        const newRun = { 
-            date: new Date().toLocaleDateString(), 
-            distance, 
-            timestamp: firebase.firestore.Timestamp.now() 
-        };
-        this.runs.push(newRun);
+        const d = parseFloat(this.runDistanceInput.value);
+        if (isNaN(d) || d <= 0) return;
+        this.runs.push({ date: new Date().toLocaleDateString(), distance: d, timestamp: firebase.firestore.Timestamp.now() });
         this.runDistanceInput.value = '';
-
-        try {
-            await this.dbRef.update({ runs: this.runs });
-            this.updateDisplay();
-        } catch (error) { console.error(error); }
+        await this.dbRef.update({ runs: this.runs });
+        this.updateDisplay();
     }
 
     updateDisplay() {
         this.runs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-        const totalCovered = this.runs.reduce((sum, run) => sum + run.distance, 0);
-        const remaining = this.totalDistance - totalCovered;
-        const percentage = (totalCovered / this.totalDistance) * 100;
+        const covered = this.runs.reduce((s, r) => s + r.distance, 0);
+        const remaining = this.totalDistance - covered;
+        const pct = (covered / this.totalDistance) * 100;
 
-        this.completedPercentageSpan.textContent = percentage.toFixed(2);
-        this.distanceCoveredSpan.textContent = totalCovered.toFixed(2);
+        this.completedPercentageSpan.textContent = pct.toFixed(2);
+        this.distanceCoveredSpan.textContent = covered.toFixed(2);
         this.remainingDistanceSpan.textContent = Math.max(0, remaining).toFixed(2);
-        this.progressBar.style.width = `${Math.min(percentage, 100)}%`;
-
-        if (this.runs.length > 0) {
-            const avg = totalCovered / this.runs.length;
-            this.runsLeftSpan.textContent = remaining > 0 ? Math.ceil(remaining / avg) : '0';
-        } else { this.runsLeftSpan.textContent = '?'; }
+        this.progressBar.style.width = `${Math.min(pct, 100)}%`;
 
         this.runList.innerHTML = '';
-        this.runs.forEach(run => {
+        this.runs.forEach(r => {
             const li = document.createElement('li');
-            li.innerHTML = `<span>${run.date}</span><span>${run.distance.toFixed(1)} km</span>`;
+            li.innerHTML = `<span>${r.date}</span><span>${r.distance.toFixed(1)} km</span>`;
             this.runList.appendChild(li);
         });
     }
 
     reset() {
-        this.runs = []; this.userId = null; this.dbRef = null;
-        this.totalDistance = 0; this.startLocation = ""; this.destinationLocation = "";
+        this.runs = []; this.userId = null; this.totalDistance = 0;
     }
 }
 
-// Main App Logic
 document.addEventListener('DOMContentLoaded', () => {
     const appInstance = new RunTheWorldApp();
-    const authPage = document.getElementById('auth-page');
-    const appContainer = document.getElementById('app-container');
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-
-    if (!auth) return;
-
+    const aP = document.getElementById('auth-page'), aC = document.getElementById('app-container');
+    
     auth.onAuthStateChanged(user => {
         if (user) {
-            if (authPage) authPage.style.display = 'none';
-            if (appContainer) appContainer.style.display = 'block';
+            aP.style.display = 'none'; aC.style.display = 'block';
             document.getElementById('user-name').textContent = user.displayName || "User";
             document.getElementById('user-photo').src = user.photoURL || "";
             appInstance.userId = user.uid;
             appInstance.loadUserData();
         } else {
-            if (authPage) authPage.style.display = 'flex';
-            if (appContainer) appContainer.style.display = 'none';
+            aP.style.display = 'flex'; aC.style.display = 'none';
             appInstance.reset();
         }
     });
 
-    if (loginBtn) {
-        loginBtn.addEventListener('click', () => {
-            auth.signInWithPopup(provider).catch(err => alert(err.message));
-        });
-    }
-
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => auth.signOut());
-    }
+    document.getElementById('login-btn').addEventListener('click', () => {
+        auth.signInWithPopup(provider).catch(err => alert(err.message));
+    });
+    document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
 });
