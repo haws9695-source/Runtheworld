@@ -1,7 +1,6 @@
 // main.js
 
 // IMPORTANT: Replace with your web app's Firebase configuration
-// You can get this from your Firebase project console.
 const firebaseConfig = {
     apiKey: "AIzaSyBV9cJh4Cvni2xN4X1Wd_XhzbXesg0whX0",
     authDomain: "runtheworld-55c68.firebaseapp.com",
@@ -10,12 +9,19 @@ const firebaseConfig = {
     messagingSenderId: "175654937851",
     appId: "1:175654937851:web:1c09a7621042d023eb7c5e",
     measurementId: "G-MGZFK2B24D"
-  };
+};
 
-// Check if placeholders are still present
-if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-    console.warn("Firebase configuration is not set up! Please update main.js with your project credentials.");
-}
+// Distance Data (Approximate distances in km)
+const distanceMatrix = {
+    "Seoul": { "Busan": 325, "Tokyo": 1150, "Osaka": 830, "New York": 11000, "Los Angeles": 9500, "London": 8800, "Paris": 8900 },
+    "Busan": { "Seoul": 325, "Tokyo": 950, "Osaka": 600, "New York": 11300, "Los Angeles": 9200, "London": 9100, "Paris": 9200 },
+    "Tokyo": { "Seoul": 1150, "Busan": 950, "Osaka": 400, "New York": 10800, "Los Angeles": 8800, "London": 9500, "Paris": 9700 },
+    "Osaka": { "Seoul": 830, "Busan": 600, "Tokyo": 400, "New York": 11000, "Los Angeles": 9100, "London": 9500, "Paris": 9600 },
+    "New York": { "Seoul": 11000, "Busan": 11300, "Tokyo": 10800, "Osaka": 11000, "Los Angeles": 3900, "London": 5500, "Paris": 5800 },
+    "Los Angeles": { "Seoul": 9500, "Busan": 9200, "Tokyo": 8800, "Osaka": 9100, "New York": 3900, "London": 8700, "Paris": 9100 },
+    "London": { "Seoul": 8800, "Busan": 9100, "Tokyo": 9500, "Osaka": 9500, "New York": 5500, "Los Angeles": 8700, "Paris": 340 },
+    "Paris": { "Seoul": 8900, "Busan": 9200, "Tokyo": 9700, "Osaka": 9600, "New York": 5800, "Los Angeles": 9100, "London": 340 }
+};
 
 // Initialize Firebase
 let app, auth, db, provider;
@@ -40,8 +46,8 @@ class RunTheWorldApp {
         // UI Elements - Setup
         this.setupSection = document.getElementById('setup-section');
         this.dashboardSection = document.getElementById('dashboard-section');
-        this.startLocationInput = document.getElementById('start-location');
-        this.destinationLocationInput = document.getElementById('destination-location');
+        this.startLocationSelect = document.getElementById('start-location');
+        this.destinationLocationSelect = document.getElementById('destination-location');
         this.routeDistanceInput = document.getElementById('route-distance');
         this.saveRouteBtn = document.getElementById('save-route-btn');
 
@@ -65,7 +71,14 @@ class RunTheWorldApp {
     }
 
     addEventListeners() {
-        // Setup listeners
+        // Setup listeners for automatic distance calculation
+        if (this.startLocationSelect) {
+            this.startLocationSelect.addEventListener('change', () => this.calculateDistance());
+        }
+        if (this.destinationLocationSelect) {
+            this.destinationLocationSelect.addEventListener('change', () => this.calculateDistance());
+        }
+
         if (this.saveRouteBtn) {
             this.saveRouteBtn.addEventListener('click', () => this.saveRoute());
         }
@@ -81,6 +94,25 @@ class RunTheWorldApp {
             this.runDistanceInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.addRun();
             });
+        }
+    }
+
+    calculateDistance() {
+        const start = this.startLocationSelect.value;
+        const dest = this.destinationLocationSelect.value;
+
+        if (start && dest) {
+            if (start === dest) {
+                this.routeDistanceInput.value = 0;
+                return;
+            }
+            const distance = distanceMatrix[start]?.[dest];
+            if (distance) {
+                this.routeDistanceInput.value = distance;
+            } else {
+                this.routeDistanceInput.value = "";
+                console.warn("Distance not found in matrix");
+            }
         }
     }
 
@@ -103,7 +135,6 @@ class RunTheWorldApp {
                     this.showSetup();
                 }
             } else {
-                // New user
                 await this.dbRef.set({ runs: [] });
                 this.showSetup();
             }
@@ -113,12 +144,12 @@ class RunTheWorldApp {
     }
 
     async saveRoute() {
-        const start = this.startLocationInput.value.trim();
-        const dest = this.destinationLocationInput.value.trim();
+        const start = this.startLocationSelect.value;
+        const dest = this.destinationLocationSelect.value;
         const dist = parseFloat(this.routeDistanceInput.value);
 
         if (!start || !dest || isNaN(dist) || dist <= 0) {
-            alert('Please fill in all fields with valid information.');
+            alert('Please select a valid start and destination.');
             return;
         }
 
@@ -135,7 +166,6 @@ class RunTheWorldApp {
             this.showDashboard();
         } catch (error) {
             console.error("Error saving route:", error);
-            alert("Failed to save route. Check Firestore rules.");
         }
     }
 
@@ -143,9 +173,8 @@ class RunTheWorldApp {
         this.setupSection.style.display = 'block';
         this.dashboardSection.style.display = 'none';
         
-        // Pre-fill if editing
-        this.startLocationInput.value = this.startLocation;
-        this.destinationLocationInput.value = this.destinationLocation;
+        if (this.startLocation) this.startLocationSelect.value = this.startLocation;
+        if (this.destinationLocation) this.destinationLocationSelect.value = this.destinationLocation;
         this.routeDistanceInput.value = this.totalDistance || "";
     }
 
@@ -189,12 +218,7 @@ class RunTheWorldApp {
     }
 
     updateDisplay() {
-        // Sort runs by timestamp, newest first
-        this.runs.sort((a, b) => {
-            const timeA = a.timestamp?.seconds || 0;
-            const timeB = b.timestamp?.seconds || 0;
-            return timeB - timeA;
-        });
+        this.runs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
         const totalCoveredDistance = this.runs.reduce((sum, run) => sum + run.distance, 0);
         const remainingDistance = this.totalDistance - totalCoveredDistance;
@@ -244,10 +268,7 @@ class RunTheWorldApp {
 
 // Main App Logic
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM loaded, initializing app logic...");
-    
     const appInstance = new RunTheWorldApp();
-
     const authPage = document.getElementById('auth-page');
     const appContainer = document.getElementById('app-container');
     const loginBtn = document.getElementById('login-btn');
@@ -255,45 +276,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameEl = document.getElementById('user-name');
     const userPhotoEl = document.getElementById('user-photo');
 
-    if (!auth) {
-        console.error("Firebase Auth not initialized. Check your config.");
-        return;
-    }
+    if (!auth) return;
 
-    // Listen for auth state changes
     auth.onAuthStateChanged(user => {
-        try {
-            if (user) {
-                console.log("User state: Signed In", user.displayName);
-                if (authPage) authPage.style.display = 'none';
-                if (appContainer) appContainer.style.display = 'block';
-
-                userNameEl.textContent = user.displayName || "User";
-                userPhotoEl.src = user.photoURL || "";
-                appInstance.userId = user.uid;
-                appInstance.loadUserData(); // Load route and runs
-            } else {
-                console.log("User state: Signed Out");
-                if (authPage) authPage.style.display = 'flex';
-                if (appContainer) appContainer.style.display = 'none';
-                appInstance.reset();
-            }
-        } catch (err) {
-            console.error("Auth state change error:", err);
+        if (user) {
+            if (authPage) authPage.style.display = 'none';
+            if (appContainer) appContainer.style.display = 'block';
+            userNameEl.textContent = user.displayName || "User";
+            userPhotoEl.src = user.photoURL || "";
+            appInstance.userId = user.uid;
+            appInstance.loadUserData();
+        } else {
+            if (authPage) authPage.style.display = 'flex';
+            if (appContainer) appContainer.style.display = 'none';
+            appInstance.reset();
         }
     });
 
-    // Sign in with Popup
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
             auth.signInWithPopup(provider).catch(err => {
-                console.error("Sign in error:", err);
                 alert("Login failed: " + err.message);
             });
         });
     }
 
-    // Sign out
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             auth.signOut();
