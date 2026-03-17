@@ -427,14 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const appInstance = new RunTheWorldApp();
     const aP = document.getElementById('auth-page'), aC = document.getElementById('app-container');
     
-    // Handle the redirect result when the page loads
-    auth.getRedirectResult().catch(err => {
-        console.error("Auth redirect error:", err);
-        if (err.code !== 'auth/no-auth-event') {
-            alert("Login error: " + err.message);
-        }
-    });
-
     auth.onAuthStateChanged(user => {
         if (user) {
             aP.style.display = 'none'; aC.style.display = 'block';
@@ -449,8 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('login-btn').addEventListener('click', () => {
-        // Use redirect instead of popup for better mobile support
-        auth.signInWithRedirect(provider);
+        auth.signInWithPopup(provider).catch(err => alert(err.message));
     });
     document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
 });
