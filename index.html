@@ -27,41 +27,48 @@
         </header>
 
         <main>
-            <!-- 1. Route Setup Section (Shown if no route exists) -->
+            <!-- 1. Route Setup Section -->
             <section id="setup-section" class="route-setup card">
                 <h2>Plan Your Adventure</h2>
-                <p>Choose your starting point and destination to see the distance.</p>
-                <div class="input-group">
-                    <label for="start-location">Start Location:</label>
-                    <select id="start-location">
-                        <option value="" disabled selected>Select start city</option>
-                        <option value="Seoul">Seoul (South Korea)</option>
-                        <option value="Busan">Busan (South Korea)</option>
-                        <option value="Tokyo">Tokyo (Japan)</option>
-                        <option value="Osaka">Osaka (Japan)</option>
-                        <option value="New York">New York (USA)</option>
-                        <option value="Los Angeles">Los Angeles (USA)</option>
-                        <option value="London">London (UK)</option>
-                        <option value="Paris">Paris (France)</option>
-                    </select>
+                <p>Choose your starting point and destination to calculate the distance.</p>
+                
+                <div class="route-selectors">
+                    <div class="selector-group">
+                        <h3>Start From</h3>
+                        <div class="input-group">
+                            <label>Country:</label>
+                            <select id="start-country"><option value="">Select Country</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>City:</label>
+                            <select id="start-city" disabled><option value="">Select City</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Landmark:</label>
+                            <select id="start-landmark" disabled><option value="">Select Landmark</option></select>
+                        </div>
+                    </div>
+
+                    <div class="selector-group">
+                        <h3>Destination</h3>
+                        <div class="input-group">
+                            <label>Country:</label>
+                            <select id="dest-country"><option value="">Select Country</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>City:</label>
+                            <select id="dest-city" disabled><option value="">Select City</option></select>
+                        </div>
+                        <div class="input-group">
+                            <label>Landmark:</label>
+                            <select id="dest-landmark" disabled><option value="">Select Landmark</option></select>
+                        </div>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="destination-location">Destination:</label>
-                    <select id="destination-location">
-                        <option value="" disabled selected>Select destination city</option>
-                        <option value="Seoul">Seoul (South Korea)</option>
-                        <option value="Busan">Busan (South Korea)</option>
-                        <option value="Tokyo">Tokyo (Japan)</option>
-                        <option value="Osaka">Osaka (Japan)</option>
-                        <option value="New York">New York (USA)</option>
-                        <option value="Los Angeles">Los Angeles (USA)</option>
-                        <option value="London">London (UK)</option>
-                        <option value="Paris">Paris (France)</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="route-distance">Estimated Distance (km):</label>
-                    <input type="number" id="route-distance" placeholder="Distance will be calculated" readonly>
+
+                <div class="input-group distance-display">
+                    <label>Total Distance (km):</label>
+                    <input type="number" id="route-distance" placeholder="Select landmarks" readonly>
                 </div>
                 <button id="save-route-btn">Start My Journey</button>
             </section>

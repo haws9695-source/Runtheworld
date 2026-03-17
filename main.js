@@ -11,16 +11,51 @@ const firebaseConfig = {
     measurementId: "G-MGZFK2B24D"
 };
 
-// Distance Data (Approximate distances in km)
-const distanceMatrix = {
-    "Seoul": { "Busan": 325, "Tokyo": 1150, "Osaka": 830, "New York": 11000, "Los Angeles": 9500, "London": 8800, "Paris": 8900 },
-    "Busan": { "Seoul": 325, "Tokyo": 950, "Osaka": 600, "New York": 11300, "Los Angeles": 9200, "London": 9100, "Paris": 9200 },
-    "Tokyo": { "Seoul": 1150, "Busan": 950, "Osaka": 400, "New York": 10800, "Los Angeles": 8800, "London": 9500, "Paris": 9700 },
-    "Osaka": { "Seoul": 830, "Busan": 600, "Tokyo": 400, "New York": 11000, "Los Angeles": 9100, "London": 9500, "Paris": 9600 },
-    "New York": { "Seoul": 11000, "Busan": 11300, "Tokyo": 10800, "Osaka": 11000, "Los Angeles": 3900, "London": 5500, "Paris": 5800 },
-    "Los Angeles": { "Seoul": 9500, "Busan": 9200, "Tokyo": 8800, "Osaka": 9100, "New York": 3900, "London": 8700, "Paris": 9100 },
-    "London": { "Seoul": 8800, "Busan": 9100, "Tokyo": 9500, "Osaka": 9500, "New York": 5500, "Los Angeles": 8700, "Paris": 340 },
-    "Paris": { "Seoul": 8900, "Busan": 9200, "Tokyo": 9700, "Osaka": 9600, "New York": 5800, "Los Angeles": 9100, "London": 340 }
+// Hierarchical Location Data with Coordinates
+const locationData = {
+    "South Korea": {
+        "Seoul": {
+            "N Seoul Tower": { lat: 37.5512, lng: 126.9882 },
+            "Gyeongbokgung Palace": { lat: 37.5796, lng: 126.9770 },
+            "Lotte World Tower": { lat: 37.5125, lng: 127.1028 }
+        },
+        "Busan": {
+            "Haeundae Beach": { lat: 35.1587, lng: 129.1604 },
+            "Gamcheon Culture Village": { lat: 35.0975, lng: 129.0106 }
+        }
+    },
+    "Japan": {
+        "Tokyo": {
+            "Tokyo Tower": { lat: 35.6586, lng: 139.7454 },
+            "Shibuya Crossing": { lat: 35.6595, lng: 139.7005 }
+        },
+        "Osaka": {
+            "Osaka Castle": { lat: 34.6873, lng: 135.5262 },
+            "Dotonbori": { lat: 34.6687, lng: 135.5013 }
+        }
+    },
+    "USA": {
+        "New York": {
+            "Statue of Liberty": { lat: 40.6892, lng: -74.0445 },
+            "Times Square": { lat: 40.7580, lng: -73.9855 }
+        },
+        "Los Angeles": {
+            "Hollywood Sign": { lat: 34.1341, lng: -118.3215 },
+            "Santa Monica Pier": { lat: 34.0101, lng: -118.4961 }
+        }
+    },
+    "France": {
+        "Paris": {
+            "Eiffel Tower": { lat: 48.8584, lng: 2.2945 },
+            "Louvre Museum": { lat: 48.8606, lng: 2.3376 }
+        }
+    },
+    "UK": {
+        "London": {
+            "Big Ben": { lat: 51.5007, lng: -0.1246 },
+            "London Eye": { lat: 51.5033, lng: -0.1195 }
+        }
+    }
 };
 
 // Initialize Firebase
@@ -43,23 +78,26 @@ class RunTheWorldApp {
         this.userId = null;
         this.dbRef = null;
 
-        // UI Elements - Setup
-        this.setupSection = document.getElementById('setup-section');
-        this.dashboardSection = document.getElementById('dashboard-section');
-        this.startLocationSelect = document.getElementById('start-location');
-        this.destinationLocationSelect = document.getElementById('destination-location');
+        // UI Selectors - Start
+        this.startCountry = document.getElementById('start-country');
+        this.startCity = document.getElementById('start-city');
+        this.startLandmark = document.getElementById('start-landmark');
+
+        // UI Selectors - Destination
+        this.destCountry = document.getElementById('dest-country');
+        this.destCity = document.getElementById('dest-city');
+        this.destLandmark = document.getElementById('dest-landmark');
+
         this.routeDistanceInput = document.getElementById('route-distance');
         this.saveRouteBtn = document.getElementById('save-route-btn');
 
-        // UI Elements - Dashboard
+        // Dashboard Elements
         this.displayStart = document.getElementById('display-start');
         this.displayDestination = document.getElementById('display-destination');
         this.totalDistanceSpan = document.getElementById('total-distance');
         this.editRouteBtn = document.getElementById('edit-route-btn');
-        
         this.runDistanceInput = document.getElementById('run-distance');
         this.addRunBtn = document.getElementById('add-run-btn');
-        
         this.completedPercentageSpan = document.getElementById('completed-percentage');
         this.distanceCoveredSpan = document.getElementById('distance-covered');
         this.remainingDistanceSpan = document.getElementById('remaining-distance');
@@ -67,52 +105,139 @@ class RunTheWorldApp {
         this.progressBar = document.getElementById('progress-bar');
         this.runList = document.getElementById('run-list');
 
+        this.populateCountries();
         this.addEventListeners();
     }
 
-    addEventListeners() {
-        // Setup listeners for automatic distance calculation
-        if (this.startLocationSelect) {
-            this.startLocationSelect.addEventListener('change', () => this.calculateDistance());
-        }
-        if (this.destinationLocationSelect) {
-            this.destinationLocationSelect.addEventListener('change', () => this.calculateDistance());
-        }
-
-        if (this.saveRouteBtn) {
-            this.saveRouteBtn.addEventListener('click', () => this.saveRoute());
-        }
-        if (this.editRouteBtn) {
-            this.editRouteBtn.addEventListener('click', () => this.showSetup());
-        }
-
-        // Run log listeners
-        if (this.addRunBtn) {
-            this.addRunBtn.addEventListener('click', () => this.addRun());
-        }
-        if (this.runDistanceInput) {
-            this.runDistanceInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') this.addRun();
+    populateCountries() {
+        const countries = Object.keys(locationData);
+        [this.startCountry, this.destCountry].forEach(select => {
+            countries.forEach(country => {
+                const opt = document.createElement('option');
+                opt.value = country;
+                opt.textContent = country;
+                select.appendChild(opt);
             });
+        });
+    }
+
+    addEventListeners() {
+        // Start Location Hierarchy
+        this.startCountry.addEventListener('change', () => this.handleCountryChange(this.startCountry, this.startCity, this.startLandmark));
+        this.startCity.addEventListener('change', () => this.handleCityChange(this.startCountry, this.startCity, this.startLandmark));
+        this.startLandmark.addEventListener('change', () => this.calculateDistance());
+
+        // Destination Hierarchy
+        this.destCountry.addEventListener('change', () => this.handleCountryChange(this.destCountry, this.destCity, this.destLandmark));
+        this.destCity.addEventListener('change', () => this.handleCityChange(this.destCountry, this.destCity, this.destLandmark));
+        this.destLandmark.addEventListener('change', () => this.calculateDistance());
+
+        if (this.saveRouteBtn) this.saveRouteBtn.addEventListener('click', () => this.saveRoute());
+        if (this.editRouteBtn) this.editRouteBtn.addEventListener('click', () => this.showSetup());
+        if (this.addRunBtn) this.addRunBtn.addEventListener('click', () => this.addRun());
+        if (this.runDistanceInput) this.runDistanceInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.addRun(); });
+    }
+
+    handleCountryChange(countrySelect, citySelect, landmarkSelect) {
+        const country = countrySelect.value;
+        citySelect.innerHTML = '<option value="">Select City</option>';
+        landmarkSelect.innerHTML = '<option value="">Select Landmark</option>';
+        landmarkSelect.disabled = true;
+
+        if (country) {
+            citySelect.disabled = false;
+            const cities = Object.keys(locationData[country]);
+            cities.forEach(city => {
+                const opt = document.createElement('option');
+                opt.value = city;
+                opt.textContent = city;
+                citySelect.appendChild(opt);
+            });
+        } else {
+            citySelect.disabled = true;
         }
+        this.calculateDistance();
+    }
+
+    handleCityChange(countrySelect, citySelect, landmarkSelect) {
+        const country = countrySelect.value;
+        const city = citySelect.value;
+        landmarkSelect.innerHTML = '<option value="">Select Landmark</option>';
+
+        if (city) {
+            landmarkSelect.disabled = false;
+            const landmarks = Object.keys(locationData[country][city]);
+            landmarks.forEach(landmark => {
+                const opt = document.createElement('option');
+                opt.value = landmark;
+                opt.textContent = landmark;
+                landmarkSelect.appendChild(opt);
+            });
+        } else {
+            landmarkSelect.disabled = true;
+        }
+        this.calculateDistance();
     }
 
     calculateDistance() {
-        const start = this.startLocationSelect.value;
-        const dest = this.destinationLocationSelect.value;
+        const sCountry = this.startCountry.value;
+        const sCity = this.startCity.value;
+        const sLandmark = this.startLandmark.value;
 
-        if (start && dest) {
-            if (start === dest) {
-                this.routeDistanceInput.value = 0;
-                return;
-            }
-            const distance = distanceMatrix[start]?.[dest];
-            if (distance) {
-                this.routeDistanceInput.value = distance;
-            } else {
-                this.routeDistanceInput.value = "";
-                console.warn("Distance not found in matrix");
-            }
+        const dCountry = this.destCountry.value;
+        const dCity = this.destCity.value;
+        const dLandmark = this.destLandmark.value;
+
+        if (sCountry && sCity && sLandmark && dCountry && dCity && dLandmark) {
+            const startCoord = locationData[sCountry][sCity][sLandmark];
+            const destCoord = locationData[dCountry][dCity][dLandmark];
+            
+            const distance = this.haversineDistance(startCoord, destCoord);
+            this.routeDistanceInput.value = distance.toFixed(1);
+        } else {
+            this.routeDistanceInput.value = "";
+        }
+    }
+
+    haversineDistance(coords1, coords2) {
+        const toRad = (x) => x * Math.PI / 180;
+        const R = 6371; // Earth's radius in km
+
+        const dLat = toRad(coords2.lat - coords1.lat);
+        const dLon = toRad(coords2.lng - coords1.lng);
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(toRad(coords1.lat)) * Math.cos(toRad(coords2.lat)) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    async saveRoute() {
+        const start = this.startLandmark.value;
+        const dest = this.destLandmark.value;
+        const dist = parseFloat(this.routeDistanceInput.value);
+
+        if (!start || !dest || isNaN(dist) || dist <= 0) {
+            alert('Please select valid start and destination landmarks.');
+            return;
+        }
+
+        this.runs = [];
+        this.startLocation = `${start} (${this.startCity.value})`;
+        this.destinationLocation = `${dest} (${this.destCity.value})`;
+        this.totalDistance = dist;
+
+        try {
+            await this.dbRef.update({
+                startLocation: this.startLocation,
+                destinationLocation: this.destinationLocation,
+                totalDistance: dist,
+                runs: []
+            });
+            this.showDashboard();
+            this.updateDisplay();
+        } catch (error) {
+            console.error("Error saving route:", error);
         }
     }
 
@@ -121,11 +246,9 @@ class RunTheWorldApp {
         try {
             this.dbRef = db.collection('users').doc(this.userId);
             const doc = await this.dbRef.get();
-            
             if (doc.exists) {
                 const data = doc.data();
                 this.runs = data.runs || [];
-                
                 if (data.startLocation && data.destinationLocation && data.totalDistance) {
                     this.startLocation = data.startLocation;
                     this.destinationLocation = data.destinationLocation;
@@ -138,136 +261,68 @@ class RunTheWorldApp {
                 await this.dbRef.set({ runs: [] });
                 this.showSetup();
             }
-        } catch (error) {
-            console.error("Error loading user data:", error);
-        }
-    }
-
-    async saveRoute() {
-        const start = this.startLocationSelect.value;
-        const dest = this.destinationLocationSelect.value;
-        const dist = parseFloat(this.routeDistanceInput.value);
-
-        if (!start || !dest || isNaN(dist) || dist <= 0) {
-            alert('Please select a valid start and destination.');
-            return;
-        }
-
-        // Reset runs history for the new journey
-        this.runs = [];
-        this.startLocation = start;
-        this.destinationLocation = dest;
-        this.totalDistance = dist;
-
-        try {
-            await this.dbRef.update({
-                startLocation: start,
-                destinationLocation: dest,
-                totalDistance: dist,
-                runs: [] // Clear history in Firestore
-            });
-            this.showDashboard();
-            this.updateDisplay(); // Refresh UI to show empty list
-        } catch (error) {
-            console.error("Error saving route:", error);
-            alert("Failed to save route. Check Firestore rules.");
-        }
+        } catch (error) { console.error(error); }
     }
 
     showSetup() {
-        this.setupSection.style.display = 'block';
-        this.dashboardSection.style.display = 'none';
-        
-        if (this.startLocation) this.startLocationSelect.value = this.startLocation;
-        if (this.destinationLocation) this.destinationLocationSelect.value = this.destinationLocation;
-        this.routeDistanceInput.value = this.totalDistance || "";
+        document.getElementById('setup-section').style.display = 'block';
+        document.getElementById('dashboard-section').style.display = 'none';
     }
 
     showDashboard() {
-        this.setupSection.style.display = 'none';
-        this.dashboardSection.style.display = 'block';
-        
+        document.getElementById('setup-section').style.display = 'none';
+        document.getElementById('dashboard-section').style.display = 'block';
         this.displayStart.textContent = this.startLocation;
         this.displayDestination.textContent = this.destinationLocation;
         this.totalDistanceSpan.textContent = this.totalDistance;
-        
         this.updateDisplay();
     }
 
     async addRun() {
         const distance = parseFloat(this.runDistanceInput.value);
+        if (isNaN(distance) || distance <= 0) { alert('Invalid distance'); return; }
 
-        if (isNaN(distance) || distance <= 0) {
-            alert('Please enter a valid running distance.');
-            return;
-        }
-
-        const date = new Date().toLocaleDateString();
         const newRun = { 
-            date, 
+            date: new Date().toLocaleDateString(), 
             distance, 
             timestamp: firebase.firestore.Timestamp.now() 
         };
-        
         this.runs.push(newRun);
         this.runDistanceInput.value = '';
 
         try {
-            await this.dbRef.update({
-                runs: this.runs
-            });
+            await this.dbRef.update({ runs: this.runs });
             this.updateDisplay();
-        } catch (error) {
-            console.error("Error adding run:", error);
-        }
+        } catch (error) { console.error(error); }
     }
 
     updateDisplay() {
         this.runs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        const totalCovered = this.runs.reduce((sum, run) => sum + run.distance, 0);
+        const remaining = this.totalDistance - totalCovered;
+        const percentage = (totalCovered / this.totalDistance) * 100;
 
-        const totalCoveredDistance = this.runs.reduce((sum, run) => sum + run.distance, 0);
-        const remainingDistance = this.totalDistance - totalCoveredDistance;
-        const completedPercentage = (totalCoveredDistance / this.totalDistance) * 100;
+        this.completedPercentageSpan.textContent = percentage.toFixed(2);
+        this.distanceCoveredSpan.textContent = totalCovered.toFixed(2);
+        this.remainingDistanceSpan.textContent = Math.max(0, remaining).toFixed(2);
+        this.progressBar.style.width = `${Math.min(percentage, 100)}%`;
 
-        if (this.completedPercentageSpan) this.completedPercentageSpan.textContent = completedPercentage.toFixed(2);
-        if (this.distanceCoveredSpan) this.distanceCoveredSpan.textContent = totalCoveredDistance.toFixed(2);
-        if (this.remainingDistanceSpan) this.remainingDistanceSpan.textContent = Math.max(0, remainingDistance).toFixed(2);
+        if (this.runs.length > 0) {
+            const avg = totalCovered / this.runs.length;
+            this.runsLeftSpan.textContent = remaining > 0 ? Math.ceil(remaining / avg) : '0';
+        } else { this.runsLeftSpan.textContent = '?'; }
 
-        if (this.progressBar) {
-            this.progressBar.style.width = `${Math.min(completedPercentage, 100)}%`;
-        }
-
-        if (this.runsLeftSpan) {
-            if (this.runs.length > 0) {
-                const averagePace = totalCoveredDistance / this.runs.length;
-                const estimatedRunsLeft = remainingDistance / averagePace;
-                this.runsLeftSpan.textContent = estimatedRunsLeft > 0 ? Math.ceil(estimatedRunsLeft).toString() : '0';
-            } else {
-                this.runsLeftSpan.textContent = '?';
-            }
-        }
-
-        if (this.runList) {
-            this.runList.innerHTML = '';
-            this.runs.forEach(run => {
-                const dateObj = run.timestamp?.toDate() || new Date(run.date);
-                const listItem = document.createElement('li');
-                listItem.innerHTML = `
-                    <span>${dateObj.toLocaleDateString()}</span>
-                    <span>${run.distance.toFixed(1)} km</span>
-                `;
-                this.runList.append(listItem);
-            });
-        }
+        this.runList.innerHTML = '';
+        this.runs.forEach(run => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${run.date}</span><span>${run.distance.toFixed(1)} km</span>`;
+            this.runList.appendChild(li);
+        });
     }
 
     reset() {
-        this.runs = [];
-        this.userId = null;
-        this.dbRef = null;
-        this.totalDistance = 0;
-        this.startLocation = "";
-        this.destinationLocation = "";
+        this.runs = []; this.userId = null; this.dbRef = null;
+        this.totalDistance = 0; this.startLocation = ""; this.destinationLocation = "";
     }
 }
 
@@ -278,8 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const appContainer = document.getElementById('app-container');
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
-    const userNameEl = document.getElementById('user-name');
-    const userPhotoEl = document.getElementById('user-photo');
 
     if (!auth) return;
 
@@ -287,8 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             if (authPage) authPage.style.display = 'none';
             if (appContainer) appContainer.style.display = 'block';
-            userNameEl.textContent = user.displayName || "User";
-            userPhotoEl.src = user.photoURL || "";
+            document.getElementById('user-name').textContent = user.displayName || "User";
+            document.getElementById('user-photo').src = user.photoURL || "";
             appInstance.userId = user.uid;
             appInstance.loadUserData();
         } else {
@@ -300,15 +353,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            auth.signInWithPopup(provider).catch(err => {
-                alert("Login failed: " + err.message);
-            });
+            auth.signInWithPopup(provider).catch(err => alert(err.message));
         });
     }
 
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            auth.signOut();
-        });
+        logoutBtn.addEventListener('click', () => auth.signOut());
     }
 });
