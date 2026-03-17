@@ -26,32 +26,61 @@ body {
     box-sizing: border-box;
 }
 
-#auth-container {
+#auth-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    background: var(--card-background);
-    padding: 40px;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px var(--shadow-medium);
-    max-width: 400px;
+    width: 100%;
+    max-width: 450px;
+    gap: 15px;
 }
 
-#auth-container h1 {
+#auth-page h1 {
     color: var(--primary-color);
+    margin-bottom: 5px;
+    font-size: 2.5em;
+    font-weight: 800;
+}
+
+#auth-container {
+    background: var(--card-background);
+    padding: 25px 35px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px var(--shadow-light);
+    width: 100%;
+}
+
+#auth-container p {
+    margin: 0;
+    color: var(--text-light);
+    font-size: 1.1em;
+    line-height: 1.5;
 }
 
 #login-btn {
     background-color: #db4437; /* Google Red */
     color: white;
-    padding: 12px 30px;
-    font-size: 1.2em;
+    padding: 14px 30px;
+    font-size: 1.1em;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.2s;
+    width: 100%;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(219, 68, 55, 0.3);
 }
 
 #login-btn:hover {
     background-color: #c33d2e;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(219, 68, 55, 0.4);
+}
+
+#login-btn:active {
+    transform: translateY(0);
 }
 
 

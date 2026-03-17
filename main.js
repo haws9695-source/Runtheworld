@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const appInstance = new RunTheWorldApp();
 
-    const authContainer = document.getElementById('auth-container');
+    const authPage = document.getElementById('auth-page');
     const appContainer = document.getElementById('app-container');
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
@@ -260,22 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Handle the redirect result
-    auth.getRedirectResult().then((result) => {
-        if (result && result.user) {
-            console.log("Redirect login successful:", result.user.displayName);
-        }
-    }).catch(error => {
-        console.error("Error during redirect sign-in:", error);
-    });
-
     // Listen for auth state changes
     auth.onAuthStateChanged(user => {
         try {
             if (user) {
                 console.log("User state: Signed In", user.displayName);
-                authContainer.style.display = 'none';
-                appContainer.style.display = 'block';
+                if (authPage) authPage.style.display = 'none';
+                if (appContainer) appContainer.style.display = 'block';
 
                 userNameEl.textContent = user.displayName || "User";
                 userPhotoEl.src = user.photoURL || "";
@@ -283,31 +274,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 appInstance.loadUserData(); // Load route and runs
             } else {
                 console.log("User state: Signed Out");
-                authContainer.style.display = 'flex';
-                appContainer.style.display = 'none';
+                if (authPage) authPage.style.display = 'flex';
+                if (appContainer) appContainer.style.display = 'none';
                 appInstance.reset();
             }
         } catch (err) {
             console.error("Auth state change error:", err);
-            alert("Auth UI Error: " + err.message);
         }
     });
 
-    // Sign in with Popup (Changed from Redirect for better stability)
+    // Sign in with Popup
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            console.log("Login button clicked, opening popup...");
-            auth.signInWithPopup(provider).then((result) => {
-                console.log("Popup login successful:", result.user.displayName);
-            }).catch(err => {
+            auth.signInWithPopup(provider).catch(err => {
                 console.error("Sign in error:", err);
-                if (err.code === 'auth/popup-blocked') {
-                    alert("Popup blocked by browser. Please allow popups for this site or use Redirect method.");
-                } else if (err.code === 'auth/operation-not-allowed') {
-                    alert("Google Sign-In is not enabled in Firebase Console.");
-                } else {
-                    alert("Login failed: " + err.message);
-                }
+                alert("Login failed: " + err.message);
             });
         });
     }
