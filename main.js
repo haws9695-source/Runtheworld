@@ -202,23 +202,44 @@ class RunTheWorldApp {
         // Clear previous
         this.mapMarkers.forEach(m => this.map.removeLayer(m));
         if (this.mapPolyline) this.map.removeLayer(this.mapPolyline);
+        if (this.coveredPolyline) this.map.removeLayer(this.coveredPolyline);
         this.mapMarkers = [];
 
         if (this.startCoord && this.destCoord) {
+            const totalCovered = this.runs.reduce((s, r) => s + r.distance, 0);
+            const fraction = Math.min(totalCovered / this.totalDistance, 1);
+
+            // Interpolate current position
+            const currentLat = this.startCoord.lat + (this.destCoord.lat - this.startCoord.lat) * fraction;
+            const currentLng = this.startCoord.lng + (this.destCoord.lng - this.startCoord.lng) * fraction;
+
             const m1 = L.marker([this.startCoord.lat, this.startCoord.lng]).addTo(this.map).bindPopup("Start: " + this.startLocation);
             const m2 = L.marker([this.destCoord.lat, this.destCoord.lng]).addTo(this.map).bindPopup("Destination: " + this.destinationLocation);
             this.mapMarkers = [m1, m2];
+
+            if (fraction > 0 && fraction < 1) {
+                const mCurrent = L.circleMarker([currentLat, currentLng], {
+                    radius: 8, fillColor: "#2196F3", color: "#fff", weight: 2, fillOpacity: 1
+                }).addTo(this.map).bindPopup("You are here! (" + (fraction * 100).toFixed(1) + "%)");
+                this.mapMarkers.push(mCurrent);
+            }
             
+            // Remaining (Dashed Red)
             this.mapPolyline = L.polyline([
-                [this.startCoord.lat, this.startCoord.lng],
+                [currentLat, currentLng],
                 [this.destCoord.lat, this.destCoord.lng]
-            ], { color: 'red', weight: 3, dashArray: '5, 10' }).addTo(this.map);
+            ], { color: '#ff5252', weight: 3, dashArray: '5, 10', opacity: 0.6 }).addTo(this.map);
+
+            // Covered (Solid Blue)
+            this.coveredPolyline = L.polyline([
+                [this.startCoord.lat, this.startCoord.lng],
+                [currentLat, currentLng]
+            ], { color: '#2196F3', weight: 5, opacity: 0.9 }).addTo(this.map);
 
             const group = new L.featureGroup(this.mapMarkers);
-            this.map.fitBounds(group.getBounds().pad(0.2));
+            this.map.fitBounds(group.getBounds().pad(0.3));
         }
         
-        // Force refresh layout
         setTimeout(() => this.map.invalidateSize(), 200);
     }
 
@@ -286,6 +307,7 @@ class RunTheWorldApp {
         this.runDistanceInput.value = '';
         await this.dbRef.update({ runs: this.runs });
         this.updateDisplay();
+        this.initMap(); // Redraw map with progress
     }
 
     updateDisplay() {
