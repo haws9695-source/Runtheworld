@@ -24,15 +24,35 @@
                 <span id="user-name"></span>
                 <button id="logout-btn">Logout</button>
             </div>
-            <h1>Run the World</h1>
-            <p>Track your progress towards a global running goal!</p>
+            <h1 id="main-title">Run the World</h1>
+            <p id="main-subtitle">Track your progress towards a global running goal!</p>
         </header>
 
         <main>
             <!-- 1. Route Setup Section -->
             <section id="setup-section" class="route-setup card">
                 <h2>Plan Your Adventure</h2>
-                <p>Choose your starting point and destination to calculate the distance.</p>
+                <p>Choose your activity and destination.</p>
+
+                <div class="mode-selection">
+                    <h3>Choose Your Mode:</h3>
+                    <div class="mode-options">
+                        <label class="mode-option">
+                            <input type="radio" name="activity-mode" value="run" checked>
+                            <span class="mode-card">
+                                <span class="mode-icon">🏃</span>
+                                <span class="mode-label">Run the World</span>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="activity-mode" value="walk">
+                            <span class="mode-card">
+                                <span class="mode-icon">🚶</span>
+                                <span class="mode-label">Walk the World</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
                 
                 <div class="route-selectors">
                     <div class="selector-group">
@@ -91,12 +111,12 @@
                 </section>
 
                 <section class="run-log card">
-                    <h2>Log Your Run</h2>
+                    <h2 id="log-title">Log Your Run</h2>
                     <div class="input-group">
-                        <label for="run-distance">Distance Run Today (km):</label>
-                        <input type="number" id="run-distance" min="0" step="0.1">
+                        <label for="run-distance" id="distance-label">Distance Run Today (km):</label>
+                        <input type="number" id="run-distance" min="0" step="0.1" placeholder="Enter distance">
                     </div>
-                    <button id="add-run-btn">Add Run</button>
+                    <button id="add-run-btn">Add Record</button>
                 </section>
 
                 <section class="progress-display card">
@@ -105,12 +125,12 @@
                         <div class="progress-bar" id="progress-bar" style="width: 0%;"></div>
                     </div>
                     <p>Completed: <span id="completed-percentage">0.00</span>%</p>
-                    <p>Total Distance Covered: <span id="distance-covered">0.00</span> km</p>
-                    <p>Remaining Distance: <span id="remaining-distance">0.00</span> km</p>
-                    <p>Estimated Runs Left: <span id="runs-left">?</span></p>
+                    <p>Total <span id="covered-unit-label">Distance</span> Covered: <span id="distance-covered">0.00</span> km</p>
+                    <p>Remaining <span id="remaining-unit-label">Distance</span>: <span id="remaining-distance">0.00</span> km</p>
+                    <p>Estimated <span id="runs-left-label">Runs</span> Left: <span id="runs-left">?</span></p>
                     
                     <div class="run-history">
-                        <h3>Run History</h3>
+                        <h3 id="history-title">Run History</h3>
                         <ul id="run-list"></ul>
                     </div>
                 </section>

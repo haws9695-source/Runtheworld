@@ -82,8 +82,11 @@ class RunTheWorldApp {
         this.map = null;
         this.mapMarkers = [];
         this.mapPolyline = null;
+        this.mode = 'run'; // 'run' or 'walk'
 
         // UI Selectors
+        this.mainTitle = document.getElementById('main-title');
+        this.mainSubtitle = document.getElementById('main-subtitle');
         this.startCountry = document.getElementById('start-country');
         this.startCity = document.getElementById('start-city');
         this.startLandmark = document.getElementById('start-landmark');
@@ -100,6 +103,12 @@ class RunTheWorldApp {
         this.editRouteBtn = document.getElementById('edit-route-btn');
         this.runDistanceInput = document.getElementById('run-distance');
         this.addRunBtn = document.getElementById('add-run-btn');
+        this.distanceLabel = document.getElementById('distance-label');
+        this.logTitle = document.getElementById('log-title');
+        this.historyTitle = document.getElementById('history-title');
+        this.coveredUnitLabel = document.getElementById('covered-unit-label');
+        this.remainingUnitLabel = document.getElementById('remaining-unit-label');
+        this.runsLeftLabel = document.getElementById('runs-left-label');
         this.completedPercentageSpan = document.getElementById('completed-percentage');
         this.distanceCoveredSpan = document.getElementById('distance-covered');
         this.remainingDistanceSpan = document.getElementById('remaining-distance');
@@ -218,8 +227,9 @@ class RunTheWorldApp {
             this.mapMarkers = [m1, m2];
 
             if (fraction > 0 && fraction < 1) {
+                const emoji = this.mode === 'walk' ? '🚶' : '🏃';
                 const runnerIcon = L.divIcon({
-                    html: '<div style="font-size: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">🏃</div>',
+                    html: `<div style="font-size: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">${emoji}</div>`,
                     className: 'runner-icon',
                     iconSize: [30, 30],
                     iconAnchor: [15, 25] // Adjust anchor to center the emoji properly
@@ -253,6 +263,9 @@ class RunTheWorldApp {
         const dist = parseFloat(this.routeDistanceInput.value);
         if (isNaN(dist) || dist <= 0) { alert('Invalid selection'); return; }
 
+        const modeInput = document.querySelector('input[name="activity-mode"]:checked');
+        this.mode = modeInput ? modeInput.value : 'run';
+
         this.runs = [];
         this.startLocation = `${this.startLandmark.value} (${this.startCity.value})`;
         this.destinationLocation = `${this.destLandmark.value} (${this.destCity.value})`;
@@ -265,7 +278,8 @@ class RunTheWorldApp {
                 totalDistance: dist,
                 startCoord: this.startCoord,
                 destCoord: this.destCoord,
-                runs: []
+                runs: [],
+                mode: this.mode
             });
             this.showDashboard();
         } catch (e) { console.error(e); }
@@ -279,6 +293,7 @@ class RunTheWorldApp {
             if (doc.exists) {
                 const d = doc.data();
                 this.runs = d.runs || [];
+                this.mode = d.mode || 'run';
                 if (d.startLocation && d.destinationLocation) {
                     this.startLocation = d.startLocation;
                     this.destinationLocation = d.destinationLocation;
@@ -287,29 +302,71 @@ class RunTheWorldApp {
                     this.destCoord = d.destCoord;
                     this.showDashboard();
                 } else { this.showSetup(); }
-            } else { await this.dbRef.set({ runs: [] }); this.showSetup(); }
+            } else { await this.dbRef.set({ runs: [], mode: 'run' }); this.showSetup(); }
         } catch (e) { console.error(e); }
     }
 
     showSetup() {
         document.getElementById('setup-section').style.display = 'block';
         document.getElementById('dashboard-section').style.display = 'none';
+        // Reset titles to default
+        this.mainTitle.textContent = "Run the World";
+        this.mainSubtitle.textContent = "Track your progress towards a global running goal!";
     }
 
     showDashboard() {
         document.getElementById('setup-section').style.display = 'none';
         document.getElementById('dashboard-section').style.display = 'block';
+        
+        // Update UI based on mode
+        if (this.mode === 'walk') {
+            this.mainTitle.textContent = "Walk the World";
+            this.mainSubtitle.textContent = "Every step brings you closer to your global destination!";
+            this.logTitle.textContent = "Log Your Walk";
+            this.distanceLabel.textContent = "Steps Walked Today:";
+            this.runDistanceInput.placeholder = "e.g. 10000";
+            this.historyTitle.textContent = "Walk History";
+            this.coveredUnitLabel.textContent = "Distance";
+            this.remainingUnitLabel.textContent = "Distance";
+            this.runsLeftLabel.textContent = "Days";
+        } else {
+            this.mainTitle.textContent = "Run the World";
+            this.mainSubtitle.textContent = "Track your progress towards a global running goal!";
+            this.logTitle.textContent = "Log Your Run";
+            this.distanceLabel.textContent = "Distance Run Today (km):";
+            this.runDistanceInput.placeholder = "e.g. 5.0";
+            this.historyTitle.textContent = "Run History";
+            this.coveredUnitLabel.textContent = "Distance";
+            this.remainingUnitLabel.textContent = "Distance";
+            this.runsLeftLabel.textContent = "Runs";
+        }
+
         this.displayStart.textContent = this.startLocation;
         this.displayDestination.textContent = this.destinationLocation;
-        this.totalDistanceSpan.textContent = this.totalDistance;
+        this.totalDistanceSpan.textContent = this.totalDistance.toFixed(1);
         this.updateDisplay();
         this.initMap(); // Draw map
     }
 
     async addRun() {
-        const d = parseFloat(this.runDistanceInput.value);
+        let d = parseFloat(this.runDistanceInput.value);
         if (isNaN(d) || d <= 0) return;
-        this.runs.push({ date: new Date().toLocaleDateString(), distance: d, timestamp: firebase.firestore.Timestamp.now() });
+
+        let displayValue = "";
+        if (this.mode === 'walk') {
+            displayValue = `${d} steps`;
+            d = (d * 0.7) / 1000; // Convert steps to km
+        } else {
+            displayValue = `${d.toFixed(1)} km`;
+        }
+
+        this.runs.push({ 
+            date: new Date().toLocaleDateString(), 
+            distance: d, 
+            displayValue: displayValue,
+            timestamp: firebase.firestore.Timestamp.now() 
+        });
+        
         this.runDistanceInput.value = '';
         await this.dbRef.update({ runs: this.runs });
         this.updateDisplay();
@@ -330,19 +387,28 @@ class RunTheWorldApp {
         const remaining = this.totalDistance - covered;
         const pct = (covered / this.totalDistance) * 100;
 
+        // Calculate average progress for "Runs Left" or "Days Left"
+        let runsLeft = "?";
+        if (this.runs.length > 0) {
+            const avg = covered / this.runs.length;
+            runsLeft = Math.ceil(remaining / avg);
+        }
+
         this.completedPercentageSpan.textContent = pct.toFixed(2);
         this.distanceCoveredSpan.textContent = covered.toFixed(2);
         this.remainingDistanceSpan.textContent = Math.max(0, remaining).toFixed(2);
+        this.runsLeftSpan.textContent = runsLeft;
         this.progressBar.style.width = `${Math.min(pct, 100)}%`;
 
         this.runList.innerHTML = '';
         this.runs.forEach(r => {
             const li = document.createElement('li');
             const timestampMillis = r.timestamp?.toMillis() || 0;
+            const displayVal = r.displayValue || `${r.distance.toFixed(1)} km`;
             li.innerHTML = `
                 <span>${r.date}</span>
                 <div style="display: flex; align-items: center;">
-                    <span>${r.distance.toFixed(1)} km</span>
+                    <span>${displayVal}</span>
                     <button class="delete-run-btn" data-id="${timestampMillis}">Delete</button>
                 </div>
             `;

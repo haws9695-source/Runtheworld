@@ -9,6 +9,7 @@
 - **Personalized UI:** The application UI updates to show the logged-in user's profile information (name and photo) and hides/shows content based on auth state.
 - **Dynamic Progress Tracking:** The core features of tracking running distance, calculating progress, and estimating remaining runs are all functional and tied to the user's cloud data.
 - **Run Record Management:** Users can log their daily runs and delete incorrect or accidental entries from their run history. Deleting a run automatically updates the progress bar, map position, and remaining distance.
+- **Activity Mode Selection (Run vs Walk):** Users can choose between "Run the World" (km-based) and "Walk the World" (steps-based). Selecting a mode updates the app theme, titles, and input logic (1 step = 0.7m).
 - **Modern and Responsive Design:** The application features a clean, card-based layout with a responsive design.
 
 ## Current Plan & Steps
