@@ -218,8 +218,14 @@ class RunTheWorldApp {
             this.mapMarkers = [m1, m2];
 
             if (fraction > 0 && fraction < 1) {
-                const mCurrent = L.circleMarker([currentLat, currentLng], {
-                    radius: 8, fillColor: "#2196F3", color: "#fff", weight: 2, fillOpacity: 1
+                const runnerIcon = L.divIcon({
+                    html: '<div style="font-size: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">🏃</div>',
+                    className: 'runner-icon',
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 25] // Adjust anchor to center the emoji properly
+                });
+                const mCurrent = L.marker([currentLat, currentLng], {
+                    icon: runnerIcon
                 }).addTo(this.map).bindPopup("You are here! (" + (fraction * 100).toFixed(1) + "%)");
                 this.mapMarkers.push(mCurrent);
             }

@@ -338,6 +338,14 @@ button:active {
     transform: translateY(0);
 }
 
+.runner-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent !important;
+    border: none !important;
+}
+
 footer {
     background-color: var(--text-color);
     color: white;
