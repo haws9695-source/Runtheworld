@@ -11,11 +11,21 @@ const firebaseConfig = {
     appId: "YOUR_APP_ID"
 };
 
+// Check if placeholders are still present
+if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+    console.warn("Firebase configuration is not set up! Please update main.js with your project credentials.");
+}
+
 // Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-const provider = new firebase.auth.GoogleAuthProvider();
+let app, auth, db, provider;
+try {
+    app = firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    provider = new firebase.auth.GoogleAuthProvider();
+} catch (e) {
+    console.error("Firebase initialization error:", e);
+}
 
 class RunTheWorldApp {
     constructor() {
@@ -39,26 +49,34 @@ class RunTheWorldApp {
     }
 
     addEventListeners() {
-        this.addRunBtn.addEventListener('click', () => this.addRun());
-        this.runDistanceInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.addRun();
-            }
-        });
+        if (this.addRunBtn) {
+            this.addRunBtn.addEventListener('click', () => this.addRun());
+        }
+        if (this.runDistanceInput) {
+            this.runDistanceInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    this.addRun();
+                }
+            });
+        }
     }
 
     async loadRuns() {
-        if (!this.userId) return;
-        this.dbRef = db.collection('users').doc(this.userId);
-        const doc = await this.dbRef.get();
-        if (doc.exists) {
-            this.runs = doc.data().runs || [];
-        } else {
-            // Create a new document for the user
-            await this.dbRef.set({ runs: [] });
-            this.runs = [];
+        if (!this.userId || !db) return;
+        try {
+            this.dbRef = db.collection('users').doc(this.userId);
+            const doc = await this.dbRef.get();
+            if (doc.exists) {
+                this.runs = doc.data().runs || [];
+            } else {
+                // Create a new document for the user
+                await this.dbRef.set({ runs: [] });
+                this.runs = [];
+            }
+            this.updateDisplay();
+        } catch (error) {
+            console.error("Error loading runs:", error);
         }
-        this.updateDisplay();
     }
 
     async addRun() {
@@ -70,48 +88,69 @@ class RunTheWorldApp {
         }
 
         const date = new Date().toLocaleDateString();
-        this.runs.push({ date, distance, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        const newRun = { 
+            date, 
+            distance, 
+            timestamp: firebase.firestore.Timestamp.now() 
+        };
+        
+        this.runs.push(newRun);
         this.runDistanceInput.value = '';
 
-        await this.dbRef.update({
-            runs: this.runs
-        });
-        
-        this.updateDisplay();
+        try {
+            await this.dbRef.update({
+                runs: this.runs
+            });
+            this.updateDisplay();
+        } catch (error) {
+            console.error("Error adding run:", error);
+            alert("Failed to save run. Make sure your Firestore rules allow writes.");
+        }
     }
 
     updateDisplay() {
         // Sort runs by timestamp, newest first
-        this.runs.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
+        this.runs.sort((a, b) => {
+            const timeA = a.timestamp?.seconds || 0;
+            const timeB = b.timestamp?.seconds || 0;
+            return timeB - timeA;
+        });
 
         const totalCoveredDistance = this.runs.reduce((sum, run) => sum + run.distance, 0);
         const remainingDistance = this.totalDistance - totalCoveredDistance;
         const completedPercentage = (totalCoveredDistance / this.totalDistance) * 100;
 
-        this.totalDistanceSpan.textContent = this.totalDistance;
-        this.completedPercentageSpan.textContent = completedPercentage.toFixed(2);
-        this.distanceCoveredSpan.textContent = totalCoveredDistance.toFixed(2);
-        this.remainingDistanceSpan.textContent = remainingDistance.toFixed(2);
+        if (this.totalDistanceSpan) this.totalDistanceSpan.textContent = this.totalDistance;
+        if (this.completedPercentageSpan) this.completedPercentageSpan.textContent = completedPercentage.toFixed(2);
+        if (this.distanceCoveredSpan) this.distanceCoveredSpan.textContent = totalCoveredDistance.toFixed(2);
+        if (this.remainingDistanceSpan) this.remainingDistanceSpan.textContent = Math.max(0, remainingDistance).toFixed(2);
 
-        this.progressBar.style.width = `${Math.min(completedPercentage, 100)}%`;
-
-        if (this.runs.length > 0) {
-            const averagePace = totalCoveredDistance / this.runs.length;
-            const estimatedRunsLeft = remainingDistance / averagePace;
-            this.runsLeftSpan.textContent = estimatedRunsLeft > 0 ? Math.ceil(estimatedRunsLeft).toString() : '0';
-        } else {
-            this.runsLeftSpan.textContent = '?';
+        if (this.progressBar) {
+            this.progressBar.style.width = `${Math.min(completedPercentage, 100)}%`;
         }
 
-        this.runList.innerHTML = '';
-        this.runs.forEach(run => {
-            const listItem = document.createElement('li');
-            listItem.innerHTML = `
-                <span>${new Date(run.timestamp?.toDate() || run.date).toLocaleDateString()}</span>
-                <span>${run.distance.toFixed(1)} km</span>
-            `;
-            this.runList.append(listItem); // Append to show oldest first, or prepend for newest first
-        });
+        if (this.runsLeftSpan) {
+            if (this.runs.length > 0) {
+                const averagePace = totalCoveredDistance / this.runs.length;
+                const estimatedRunsLeft = remainingDistance / averagePace;
+                this.runsLeftSpan.textContent = estimatedRunsLeft > 0 ? Math.ceil(estimatedRunsLeft).toString() : '0';
+            } else {
+                this.runsLeftSpan.textContent = '?';
+            }
+        }
+
+        if (this.runList) {
+            this.runList.innerHTML = '';
+            this.runs.forEach(run => {
+                const dateObj = run.timestamp?.toDate() || new Date(run.date);
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `
+                    <span>${dateObj.toLocaleDateString()}</span>
+                    <span>${run.distance.toFixed(1)} km</span>
+                `;
+                this.runList.append(listItem);
+            });
+        }
     }
 
     reset() {
@@ -124,7 +163,9 @@ class RunTheWorldApp {
 
 // Main App Logic
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new RunTheWorldApp();
+    console.log("DOM loaded, initializing app logic...");
+    
+    const appInstance = new RunTheWorldApp();
 
     const authContainer = document.getElementById('auth-container');
     const appContainer = document.getElementById('app-container');
@@ -133,37 +174,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const userNameEl = document.getElementById('user-name');
     const userPhotoEl = document.getElementById('user-photo');
 
+    if (!auth) {
+        console.error("Firebase Auth not initialized. Check your config.");
+        return;
+    }
+
     // Handle the redirect result
-    auth.getRedirectResult().catch(error => {
+    auth.getRedirectResult().then((result) => {
+        if (result.user) {
+            console.log("Redirect login successful:", result.user.displayName);
+        }
+    }).catch(error => {
         console.error("Error during redirect sign-in:", error);
+        if (error.code === 'auth/operation-not-allowed') {
+            alert("Google Sign-In is not enabled in your Firebase Console. Please enable it under Authentication > Sign-in method.");
+        } else {
+            alert("Login error: " + error.message);
+        }
     });
 
     // Listen for auth state changes
     auth.onAuthStateChanged(user => {
         if (user) {
-            // User is signed in
+            console.log("User state: Signed In", user.displayName);
             authContainer.style.display = 'none';
             appContainer.style.display = 'block';
 
             userNameEl.textContent = user.displayName;
             userPhotoEl.src = user.photoURL;
-            app.userId = user.uid;
-            app.loadRuns();
+            appInstance.userId = user.uid;
+            appInstance.loadRuns();
         } else {
-            // User is signed out
+            console.log("User state: Signed Out");
             authContainer.style.display = 'flex';
             appContainer.style.display = 'none';
-            app.reset();
+            appInstance.reset();
         }
     });
 
     // Sign in with Redirect
-    loginBtn.addEventListener('click', () => {
-        auth.signInWithRedirect(provider);
-    });
+    if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+            console.log("Login button clicked, starting redirect...");
+            if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+                alert("Please set your Firebase API Key in main.js first!");
+                return;
+            }
+            auth.signInWithRedirect(provider).catch(err => {
+                console.error("Sign in error:", err);
+                alert("Sign in failed: " + err.message);
+            });
+        });
+    }
 
     // Sign out
-    logoutBtn.addEventListener('click', () => {
-        auth.signOut();
-    });
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+    }
 });
