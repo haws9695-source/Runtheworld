@@ -293,11 +293,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Sign in with Redirect
+    // Sign in with Popup (Changed from Redirect for better stability)
     if (loginBtn) {
         loginBtn.addEventListener('click', () => {
-            auth.signInWithRedirect(provider).catch(err => {
+            console.log("Login button clicked, opening popup...");
+            auth.signInWithPopup(provider).then((result) => {
+                console.log("Popup login successful:", result.user.displayName);
+            }).catch(err => {
                 console.error("Sign in error:", err);
+                if (err.code === 'auth/popup-blocked') {
+                    alert("Popup blocked by browser. Please allow popups for this site or use Redirect method.");
+                } else if (err.code === 'auth/operation-not-allowed') {
+                    alert("Google Sign-In is not enabled in Firebase Console.");
+                } else {
+                    alert("Login failed: " + err.message);
+                }
             });
         });
     }
